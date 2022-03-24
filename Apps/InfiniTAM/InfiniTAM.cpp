@@ -11,15 +11,12 @@
 #include "../../InputSource/PicoFlexxEngine.h"
 #include "../../InputSource/RealSenseEngine.h"
 #include "../../InputSource/LibUVCEngine.h"
-#include "../../InputSource/RealSense2Engine.h"
+#include "../../InputSource/RealSenseEngine.h"
 #include "../../InputSource/FFMPEGReader.h"
-#include "../../InputSource/RosImageSourceEngine.h"
-#include "../../InputSource/ExternalTrackerEngine.h"
 #include "../../ITMLib/ITMLibDefines.h"
 #include "../../ITMLib/Core/ITMBasicEngine.h"
 #include "../../ITMLib/Core/ITMBasicSurfelEngine.h"
 #include "../../ITMLib/Core/ITMMultiEngine.h"
-
 
 using namespace InfiniTAM::Engine;
 using namespace InputSource;
@@ -31,10 +28,7 @@ using namespace ITMLib;
     @para arg4 the IMU images. If images are omitted, some live sources will
     be tried.
 */
-
-bool use_ros_image = true;
- 
-static void CreateDefaultImageSource(ImageSourceEngine* & imageSource, IMUSourceEngine* & imuSource, const char *arg1, const char *arg2, const char *arg3, const char *arg4, ros::NodeHandle& nh)
+static void CreateDefaultImageSource(ImageSourceEngine* & imageSource, IMUSourceEngine* & imuSource, const char *arg1, const char *arg2, const char *arg3, const char *arg4)
 {
 	const char *calibFile = arg1;
 	const char *filename1 = arg2;
@@ -49,13 +43,6 @@ static void CreateDefaultImageSource(ImageSourceEngine* & imageSource, IMUSource
 	}
 
 	printf("using calibration file: %s\n", calibFile);
-
-	if(filename1 == NULL && filename2 == NULL && filename_imu == NULL && use_ros_image){
-		printf("Default use ROS to subsribe images..... \n");
-		imageSource = new InputSource::RosImageSourceEngine(nh,calibFile);
-	}
-	else
-		use_ros_image = false;
 
 	if ((imageSource == NULL) && (filename2 != NULL))
 	{
@@ -99,9 +86,7 @@ static void CreateDefaultImageSource(ImageSourceEngine* & imageSource, IMUSource
 		printf("trying OpenNI device: %s - calibration: %s\n",
 				filename1 ? filename1 : "<OpenNI default device>",
 				useInternalCalibration ? "internal" : "from file");
-		//imageSource = new OpenNIEngine(calibFile, filename1, useInternalCalibration);
-        // Set useInternalCalibration to true if ITMVoxel::hasColorInformation is true
-        imageSource = new OpenNIEngine(calibFile, filename1, ITMVoxel::hasColorInformation);
+		imageSource = new OpenNIEngine(calibFile, filename1, useInternalCalibration);
 		if (imageSource->getDepthImageSize().x == 0)
 		{
 			delete imageSource;
@@ -131,18 +116,7 @@ static void CreateDefaultImageSource(ImageSourceEngine* & imageSource, IMUSource
 		}
 	}
 
-    if (imageSource == NULL)
-    {
-        printf("trying RealSense device with SDK 2.X (librealsense2)\n");
-        imageSource = new RealSense2Engine(calibFile);
-        if (imageSource->getDepthImageSize().x == 0)
-        {
-            delete imageSource;
-            imageSource = NULL;
-        }
-    }
-
-    if (imageSource == NULL)
+	if (imageSource == NULL)
 	{
 		printf("trying MS Kinect 2 device\n");
 		imageSource = new Kinect2Engine(calibFile);
@@ -173,64 +147,33 @@ try
 	const char *arg3 = NULL;
 	const char *arg4 = NULL;
 
-	ros::init(argc,argv, "Infinitam_node");
-	ros::NodeHandle nh;
+	int arg = 1;
+	do {
+		if (argv[arg] != NULL) arg1 = argv[arg]; else break;
+		++arg;
+		if (argv[arg] != NULL) arg2 = argv[arg]; else break;
+		++arg;
+		if (argv[arg] != NULL) arg3 = argv[arg]; else break;
+		++arg;
+		if (argv[arg] != NULL) arg4 = argv[arg]; else break;
+	} while (false);
 
-	std::string calib_address;
-	if(nh.getParam("calib_address", calib_address)){
-		ROS_INFO("Calibration file address %s \n", calib_address.c_str());
-		arg1 = calib_address.c_str();
+	if (arg == 1) {
+		printf("usage: %s [<calibfile> [<imagesource>] ]\n"
+		       "  <calibfile>   : path to a file containing intrinsic calibration parameters\n"
+		       "  <imagesource> : either one argument to specify OpenNI device ID\n"
+		       "                  or two arguments specifying rgb and depth file masks\n"
+		       "\n"
+		       "examples:\n"
+		       "  %s ./Files/Teddy/calib.txt ./Files/Teddy/Frames/%%04i.ppm ./Files/Teddy/Frames/%%04i.pgm\n"
+		       "  %s ./Files/Teddy/calib.txt\n\n", argv[0], argv[0], argv[0]);
 	}
-	else{
-		ROS_INFO("Not providing calibration file address in the launch file. Make sure you provide 4 args to run the Infinitam without ROS %s \n", calib_address.c_str());
-	}
-
-	bool use_external_pose_estimation = false;
-	if(nh.getParam("use_external_pose_estimation", use_external_pose_estimation)){
-		ROS_INFO("Use_external_pose_estimation or not ? %d \n", use_external_pose_estimation);
-	}
-	else{
-		ROS_INFO("Not providing if we need to use external pose estimation. Default not use.  \n");
-	}
-
-	// int arg = 1;
-	// do {
-	// 	if (argv[arg] != NULL) arg1 = argv[arg]; else break;
-	// 	++arg;
-	// 	if (argv[arg] != NULL) arg2 = argv[arg]; else break;
-	// 	++arg;
-	// 	if (argv[arg] != NULL) arg3 = argv[arg]; else break;
-	// 	++arg;
-	// 	if (argv[arg] != NULL) arg4 = argv[arg]; else break;
-	// } while (false);
-
-	// if (arg == 1) {
-	// 	printf("usage: %s [<calibfile> [<imagesource>] ]\n"
-	// 	       "  <calibfile>   : path to a file containing intrinsic calibration parameters\n"
-	// 	       "  <imagesource> : either one argument to specify OpenNI device ID\n"
-	// 	       "                  or two arguments specifying rgb and depth file masks\n"
-	// 	       "\n"
-	// 	       "examples:\n"
-	// 	       "  %s ./Files/Teddy/calib.txt ./Files/Teddy/Frames/%%04i.ppm ./Files/Teddy/Frames/%%04i.pgm\n"
-	// 	       "  %s ./Files/Teddy/calib.txt\n\n", argv[0], argv[0], argv[0]);
-	// }
 
 	printf("initialising ...\n");
 	ImageSourceEngine *imageSource = NULL;
 	IMUSourceEngine *imuSource = NULL;
-	ExternalTrackerEngine *ExternalTrackerSource = NULL;
 
-	CreateDefaultImageSource(imageSource, imuSource, arg1, arg2, arg3, arg4, nh);
-
-	if(use_external_pose_estimation){
-		ExternalTrackerSource = new ExternalTrackerEngine(nh);
-		//generally you dont want to start this spin because in the ROSImageSourceEngine we have started the ROS Spin
-		//However, if you don want to subscribe ROS image but just want to use external pose from ROS, we need to start ros spin here
-		//If you just want to use external pose from ROS, you need to MAKE SURE your none-ROS image have "timestamp" as a member so that the program can compare if the external pose matches that image
-		if(!use_ros_image)
-			ExternalTrackerSource->StartRosSpinThread();
-	}
-
+	CreateDefaultImageSource(imageSource, imuSource, arg1, arg2, arg3, arg4);
 	if (imageSource==NULL)
 	{
 		std::cout << "failed to open any image stream" << std::endl;
@@ -256,14 +199,13 @@ try
 		break;
 	}
 
-	UIEngine::Instance()->Initialise(argc, argv, imageSource, imuSource, ExternalTrackerSource, mainEngine, "./Files/Out", internalSettings->deviceType, use_ros_image);
+	UIEngine::Instance()->Initialise(argc, argv, imageSource, imuSource, mainEngine, "./Files/Out", internalSettings->deviceType);
 	UIEngine::Instance()->Run();
 	UIEngine::Instance()->Shutdown();
 
 	delete mainEngine;
 	delete internalSettings;
 	delete imageSource;
-	delete ExternalTrackerSource;
 	if (imuSource != NULL) delete imuSource;
 	return 0;
 }

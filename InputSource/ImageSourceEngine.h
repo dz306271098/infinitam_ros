@@ -65,22 +65,6 @@ namespace InputSource {
 		 * \return  true, if the image source engine is able to yield more RGB-D images, or false otherwise.
 		 */
 		virtual bool hasMoreImages(void) const = 0;
-
-		/**
-		 * \brief Check if the image pair's timestamp matches. Used for ROS version
-		 * 
-		 * \return true if the depth and color image timestamp is within a threshold
-		*/
-		virtual bool ImagePairMatches(){
-			return true;
-		}
-
-		/**
-		 * \brief Get the timestamp of the image
-		*/
-		virtual double GetImageTimestamp(){
-			return -1;
-		}
 	};
 
 	class BaseImageSourceEngine : public ImageSourceEngine

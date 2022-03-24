@@ -108,7 +108,6 @@ bool ITMLib::readRGBDCalib(const char *rgbIntrinsicsFile, const char *depthIntri
 	ret &= ITMLib::readIntrinsics(depthIntrinsicsFile, dest.intrinsics_d);
 	ret &= ITMLib::readExtrinsics(extrinsicsFile, dest.trafo_rgb_to_depth);
 	ret &= ITMLib::readDisparityCalib(disparityCalibFile, dest.disparityCalib);
-	printf("finish reading calib............................................ \n");
 	return ret;
 }
 

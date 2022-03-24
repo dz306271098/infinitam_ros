@@ -5,13 +5,10 @@
 #include "../../InputSource/ImageSourceEngine.h"
 #include "../../InputSource/IMUSourceEngine.h"
 #include "../../InputSource/FFMPEGWriter.h"
-#include "../../InputSource/ExternalTrackerEngine.h"
 #include "../../ITMLib/Core/ITMMainEngine.h"
 #include "../../ITMLib/Utils/ITMLibSettings.h"
 #include "../../ORUtils/FileUtils.h"
 #include "../../ORUtils/NVTimer.h"
-
-#include "ros/ros.h"
 
 #include <vector>
 
@@ -40,7 +37,6 @@ namespace InfiniTAM
 
 			InputSource::ImageSourceEngine *imageSource;
 			InputSource::IMUSourceEngine *imuSource;
-			InputSource::ExternalTrackerEngine *ExternalTracker;
 			ITMLib::ITMLibSettings internalSettings;
 			ITMLib::ITMMainEngine *mainEngine;
 
@@ -70,9 +66,6 @@ namespace InfiniTAM
 			int currentFrameNo; bool isRecording;
 			InputSource::FFMPEGWriter *rgbVideoWriter;
 			InputSource::FFMPEGWriter *depthVideoWriter;
-
-			bool use_ros_;
-			double dt_th_ = 0.033;
 		public:
 			static UIEngine* Instance(void) {
 				if (instance == NULL) instance = new UIEngine();
@@ -96,7 +89,8 @@ namespace InfiniTAM
 			bool needsRefresh;
 			ITMUChar4Image *saveImage;
 
-			void Initialise(int & argc, char** argv, InputSource::ImageSourceEngine *imageSource, InputSource::IMUSourceEngine *imuSource, InputSource::ExternalTrackerEngine *ExternalTracker, ITMLib::ITMMainEngine *mainEngine, const char *outFolder, ITMLib::ITMLibSettings::DeviceType deviceType, bool use_ros);
+			void Initialise(int & argc, char** argv, InputSource::ImageSourceEngine *imageSource, InputSource::IMUSourceEngine *imuSource,
+				ITMLib::ITMMainEngine *mainEngine, const char *outFolder, ITMLib::ITMLibSettings::DeviceType deviceType);
 			void Shutdown();
 
 			void Run();

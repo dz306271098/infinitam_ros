@@ -489,7 +489,8 @@ void UIEngine::glutMouseWheelFunction(int button, int dir, int x, int y)
 	uiEngine->needsRefresh = true;
 }
 
-void UIEngine::Initialise(int & argc, char** argv, ImageSourceEngine *imageSource, IMUSourceEngine *imuSource, InputSource::ExternalTrackerEngine *ExternalTracker, ITMMainEngine *mainEngine, const char *outFolder, ITMLibSettings::DeviceType deviceType, bool use_ros)
+void UIEngine::Initialise(int & argc, char** argv, ImageSourceEngine *imageSource, IMUSourceEngine *imuSource, ITMMainEngine *mainEngine,
+	const char *outFolder, ITMLibSettings::DeviceType deviceType)
 {
 	this->freeviewActive = false;
 	this->integrationActive = true;
@@ -506,14 +507,6 @@ void UIEngine::Initialise(int & argc, char** argv, ImageSourceEngine *imageSourc
 	this->imageSource = imageSource;
 	this->imuSource = imuSource;
 	this->mainEngine = mainEngine;
-	this->ExternalTracker = ExternalTracker;
-	if(ExternalTracker != NULL){
-		this->mainEngine->SetUseExternalTrakcerFlag(true);
-	}
-	else{
-		this->mainEngine->SetUseExternalTrakcerFlag(false);
-	}
-
 	{
 		size_t len = strlen(outFolder);
 		this->outFolder = new char[len + 1];
@@ -598,8 +591,6 @@ void UIEngine::Initialise(int & argc, char** argv, ImageSourceEngine *imageSourc
 
 	sdkResetTimer(&timer_average);
 
-	use_ros_ = use_ros;
-
 	printf("initialised.\n");
 }
 
@@ -617,53 +608,8 @@ void UIEngine::GetScreenshot(ITMUChar4Image *dest) const
 
 void UIEngine::ProcessFrame()
 {
-	if (!imageSource->hasMoreImages() || !ros::ok()) return;
-	if (use_ros_){
-		if(!imageSource->ImagePairMatches()) return;
-	}
-
+	if (!imageSource->hasMoreImages()) return;
 	imageSource->getImages(inputRGBImage, inputRawDepthImage);
-	double camera_timestamp = imageSource->GetImageTimestamp();
-
-	ORUtils::SE3Pose current_camera_pose;
-	double pose_timestamp = -1.0;
-	
-	//Make Sure Image timestamp and the pose timestamp match
-	bool has_pose = true;
-	if(ExternalTracker != NULL){
-		has_pose = ExternalTracker->GetNewSE3Pose(current_camera_pose, pose_timestamp);
-		if(!has_pose)
-			return;
-		
-		//printf("timestamp, camera and pose %f,%f, and difference %f \n",camera_timestamp,pose_timestamp,camera_timestamp-pose_timestamp);
-		if(camera_timestamp - pose_timestamp > dt_th_){
-			while(camera_timestamp - pose_timestamp > dt_th_ && ros::ok()){
-				has_pose = ExternalTracker->GetNewSE3Pose(current_camera_pose, pose_timestamp);
-			}
-			if(pose_timestamp - camera_timestamp > dt_th_){
-				printf("Pose estimation timestamp and camera timestamp doesn't match. Make sure they are synchronized! \n");
-				return;
-			}
-		}
-		else if(pose_timestamp - camera_timestamp > dt_th_){
-			while(pose_timestamp - camera_timestamp > dt_th_ && ros::ok()){
-				if (!imageSource->hasMoreImages() || !ros::ok()) return;
-				if (use_ros_){
-					if(!imageSource->ImagePairMatches()) return;
-				}
-
-				imageSource->getImages(inputRGBImage, inputRawDepthImage);
-				camera_timestamp = imageSource->GetImageTimestamp();
-			}
-
-			if(camera_timestamp - pose_timestamp > dt_th_){
-				printf("Pose estimation timestamp and camera timestamp doesn't match. Make sure they are synchronized! \n");
-				return;				
-			}
-		}
-
-			
-	}
 
 	if (imuSource != NULL) {
 		if (!imuSource->hasMoreMeasurements()) return;
@@ -694,11 +640,8 @@ void UIEngine::ProcessFrame()
 	sdkResetTimer(&timer_instant);
 	sdkStartTimer(&timer_instant); sdkStartTimer(&timer_average);
 
-	if(mainEngine->UseExternalTrakcer())
-		mainEngine->SetCameraPose(current_camera_pose, pose_timestamp);
-		
 	ITMTrackingState::TrackingResult trackerResult;
-	//actual processing on the mainEngine
+	//actual processing on the mailEngine
 	if (imuSource != NULL) trackerResult = mainEngine->ProcessFrame(inputRGBImage, inputRawDepthImage, inputIMUMeasurement);
 	else trackerResult = mainEngine->ProcessFrame(inputRGBImage, inputRawDepthImage);
 

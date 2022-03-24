@@ -24,8 +24,8 @@ namespace ITMLib
 			TRAFO_AFFINE
 		};
 
-		//#################### PUBLIC VARIABLES ####################
-	public:
+		//#################### PRIVATE VARIABLES ####################
+	private:
 		TrafoType type;
 
 		/** These are the actual parameters. */
